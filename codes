@@ -1,0 +1,225 @@
+import { useState, useEffect } from "react";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
+import { Bell, BellOff, Check, X, Droplets } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+const WATER_TIPS = [
+  "💧 أغلق الماء أثناء تنظيف الأسنان - وفّر 6 لترات في الدقيقة!",
+  "🚿 قلّل وقت الاستحمام 5 دقائق = توفير 50 لتر!",
+  "🌱 اسقِ النباتات في الصباح الباكر لتقليل التبخر",
+  "🔧 أصلح التسريبات فوراً - صنبور يقطر = 20 لتر/يوم ضائع",
+  "🍽️ استخدم جلاية الصحون بحمولة كاملة فقط",
+  "🚗 اغسل السيارة بالدلو بدل الخرطوم - وفّر 100 لتر!",
+  "🌧️ اجمع مياه الأمطار لري الحديقة",
+  "🚽 ضع زجاجة ماء في خزان المرحاض لتقليل التدفق",
+  "👕 اغسل الملابس بحمولة كاملة فقط",
+  "🥗 اغسل الخضار في وعاء بدل الماء الجاري",
+];
+
+export const NotificationManager = () => {
+  const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [isSupported, setIsSupported] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setIsSupported("Notification" in window);
+    if ("Notification" in window) {
+      setPermission(Notification.permission);
+    }
+    setTipIndex(Math.floor(Math.random() * WATER_TIPS.length));
+  }, []);
+
+  const requestPermission = async () => {
+    if (!isSupported) {
+      toast({
+        title: "غير مدعوم",
+        description: "متصفحك لا يدعم الإشعارات",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await Notification.requestPermission();
+      setPermission(result);
+      
+      if (result === "granted") {
+        toast({
+          title: "تم تفعيل الإشعارات! 🔔",
+          description: "ستصلك نصائح يومية لتوفير المياه",
+        });
+        
+        // Send welcome notification
+        new Notification("مرحباً بك في برنامج توفير المياه! 💧", {
+          body: "ستصلك نصائح يومية للحفاظ على كل قطرة",
+          icon: "/pwa-192x192.png",
+          tag: "welcome",
+        });
+
+        // Schedule daily tips (demo: every 30 seconds for testing)
+        scheduleNotifications();
+      } else if (result === "denied") {
+        toast({
+          title: "تم رفض الإشعارات",
+          description: "يمكنك تفعيلها من إعدادات المتصفح",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Notification error:", error);
+    }
+  };
+
+  const scheduleNotifications = () => {
+    // Store flag in localStorage
+    localStorage.setItem("waterTipsEnabled", "true");
+    
+    // Demo: Show a tip every minute (in production, use service worker for daily tips)
+    const showRandomTip = () => {
+      if (Notification.permission === "granted" && localStorage.getItem("waterTipsEnabled") === "true") {
+        const randomTip = WATER_TIPS[Math.floor(Math.random() * WATER_TIPS.length)];
+        new Notification("نصيحة لتوفير المياه 💧", {
+          body: randomTip,
+          icon: "/pwa-192x192.png",
+          tag: "water-tip",
+        });
+      }
+    };
+
+    // Initial tip after 1 minute
+    setTimeout(showRandomTip, 60000);
+  };
+
+  const disableNotifications = () => {
+    localStorage.setItem("waterTipsEnabled", "false");
+    toast({
+      title: "تم إيقاف الإشعارات",
+      description: "لن تصلك نصائح حتى تفعّلها مجدداً",
+    });
+  };
+
+  const sendTestNotification = () => {
+    if (permission === "granted") {
+      const randomTip = WATER_TIPS[Math.floor(Math.random() * WATER_TIPS.length)];
+      new Notification("نصيحة لتوفير المياه 💧", {
+        body: randomTip,
+        icon: "/pwa-192x192.png",
+        tag: "water-tip-test",
+      });
+      toast({
+        title: "تم إرسال نصيحة تجريبية!",
+        description: "تحقق من الإشعارات",
+      });
+    }
+  };
+
+  const currentTip = WATER_TIPS[tipIndex];return (
+    <section id="notifications" className="py-16 bg-background">
+      <div className="container mx-auto px-4">
+        <Card variant="water" className="max-w-2xl mx-auto animate-fade-in">
+          <CardHeader className="text-center">
+            <div className="inline-flex items-center justify-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4 mx-auto">
+              <Bell className="w-4 h-4" />
+              إشعارات التوفير
+            </div>
+            <CardTitle className="text-2xl">احصل على نصائح يومية</CardTitle>
+            <CardDescription>
+              فعّل الإشعارات لتصلك نصائح توفير المياه بشكل يومي
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Daily Tip Preview */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <Droplets className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-foreground mb-1">نصيحة اليوم</h4>
+                  <p className="text-muted-foreground">{currentTip}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Permission Status */}
+            <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
+              <div className="flex items-center gap-3">
+                {permission === "granted" ? (
+                  <div className="p-2 bg-accent/20 rounded-full">
+                    <Check className="w-5 h-5 text-accent" />
+                  </div>
+                ) : permission === "denied" ? (
+                  <div className="p-2 bg-destructive/20 rounded-full">
+                    <X className="w-5 h-5 text-destructive" />
+                  </div>
+                ) : (
+                  <div className="p-2 bg-muted-foreground/20 rounded-full">
+                    <BellOff className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium text-foreground">
+                    {permission === "granted" 
+                      ? "الإشعارات مفعّلة" 
+                      : permission === "denied" 
+                      ? "الإشعارات مرفوضة" 
+                      : "الإشعارات غير مفعّلة"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {permission === "granted" 
+                      ? "ستصلك نصائح يومية" 
+                      : permission === "denied" 
+                      ? "فعّلها من إعدادات المتصفح" 
+                      : "فعّل الإشعارات لتبقى متذكراً"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {permission !== "granted" ? (
+                <Button
+                  variant="water"
+                  size="lg"
+                  className="flex-1"
+                  onClick={requestPermission}
+                  disabled={!isSupported || permission === "denied"}
+                >
+                  <Bell className="w-5 h-5" />
+                  تفعيل الإشعارات
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-1"
+                    onClick={sendTestNotification}
+                  >
+                    <Bell className="w-5 h-5" />
+                    إرسال نصيحة تجريبية
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    onClick={disableNotifications}
+                  >
+                    <BellOff className="w-5 h-5" />
+                    إيقاف
+                  </Button>
+                </>
+              )}
+            </div>{!isSupported && (
+              <p className="text-center text-sm text-destructive">
+                متصفحك لا يدعم إشعارات Push
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+};
